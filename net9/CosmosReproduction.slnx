@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CosmosReproduction.Api/CosmosReproduction.Api.csproj" />
+    <Project Path="src/CosmosReproduction.AppHost/CosmosReproduction.AppHost.csproj" />
+  </Folder>
+</Solution>
