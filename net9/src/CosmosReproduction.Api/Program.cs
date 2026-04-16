@@ -109,6 +109,26 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOIN
 // ── Build and run ───────────────────────────────────────────────────
 var app = builder.Build();
 
+// Standalone mode (Docker without Aspire): create database/containers if they don't exist.
+if (string.Equals(app.Configuration["COSMOS_INIT_DB"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    var client = app.Services.GetRequiredService<CosmosClient>();
+    for (var attempt = 1; attempt <= 5; attempt++)
+    {
+        try
+        {
+            var db = await client.CreateDatabaseIfNotExistsAsync(databaseName);
+            await db.Database.CreateContainerIfNotExistsAsync(containerName, "/pk");
+            await db.Database.CreateContainerIfNotExistsAsync("leases", "/id");
+            break;
+        }
+        catch when (attempt < 5)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+    }
+}
+
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => true,

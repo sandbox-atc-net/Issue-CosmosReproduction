@@ -1,0 +1,12 @@
+**/.git
+**/bin
+**/obj
+**/results
+**/docker
+**/.vs
+**/.idea
+src/CosmosReproduction.AppHost/
+*.md
+.gitignore
+.gitattributes
+.dockerignore

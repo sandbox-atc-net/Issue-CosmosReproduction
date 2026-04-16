@@ -34,21 +34,62 @@ these operations to intermittently exceed the 500ms budget.
 ## Repository structure
 
 ```
-├── src/                          # .NET 10 solution (primary)
+├── src/                              # .NET 10 solution (primary)
 │   ├── CosmosReproduction.AppHost/   # Aspire AppHost (starts emulator + API)
 │   └── CosmosReproduction.Api/       # API with polling, change feed, metrics
-├── net9/                         # .NET 9 copy (for A/B comparison)
+├── net9/                             # .NET 9 copy (for A/B comparison)
 │   ├── src/
 │   │   ├── CosmosReproduction.AppHost/
 │   │   └── CosmosReproduction.Api/
-│   ├── global.json               # Pinned to .NET 9.0.308
-│   └── Directory.Build.props     # Targets net9.0
-├── global.json                   # Pinned to .NET 10.0.102
-└── Directory.Build.props         # Targets net10.0
+│   ├── global.json                   # Pinned to .NET 9.0.308
+│   └── Directory.Build.props         # Targets net9.0
+├── docker/
+│   ├── Dockerfile                    # Parameterized multi-stage build
+│   └── README.md                     # Docker matrix test instructions
+├── scripts/
+│   ├── run-matrix.sh                 # Orchestrator: emulator + 6 variants
+│   └── compare.py                    # Generates RESULTS.md from JSON
+├── results/                          # JSON metrics (git-ignored content)
+├── RESULTS.md                        # Auto-generated comparison table
+├── global.json                       # Pinned to .NET 10.0.102
+└── Directory.Build.props             # Targets net10.0
 ```
 
 Both solutions contain identical application code. The only differences are
 the target framework, SDK version, and Aspire package versions.
+
+## Docker base-image matrix test
+
+In addition to the Aspire-based A/B comparison above, this repo includes a
+containerized matrix test to investigate whether the Debian → Ubuntu switch
+in .NET 10's default Docker base images contributes to the regression
+(hypothesis from [@Trufolz](https://github.com/dotnet/runtime/issues/124888#issuecomment-2842149180)).
+
+**Note:** .NET 10 dropped Debian base images entirely — `aspnet:10.0-bookworm-slim`
+does not exist on MCR. The `aspnet:10.0-azurelinux3.0` image is used as the
+non-Ubuntu control.
+
+| Label | .NET | Base Image | OS |
+|---|---|---|---|
+| net9-debian | 9.0 | `aspnet:9.0` | Debian 12 (bookworm) |
+| net9-ubuntu | 9.0 | `aspnet:9.0-noble` | Ubuntu 24.04 |
+| net9-noble-chiseled | 9.0 | `aspnet:9.0-noble-chiseled` | Ubuntu 24.04 (chiseled) |
+| net10-ubuntu | 10.0 | `aspnet:10.0` | Ubuntu 24.04 |
+| net10-noble-chiseled | 10.0 | `aspnet:10.0-noble-chiseled` | Ubuntu 24.04 (chiseled) |
+| net10-azurelinux | 10.0 | `aspnet:10.0-azurelinux3.0` | Azure Linux 3.0 |
+
+```bash
+# Run the full matrix (~30 min with 5-min collection per variant)
+./scripts/run-matrix.sh 5
+
+# Full 15-min collection per variant (~90 min)
+./scripts/run-matrix.sh
+
+# Results are saved to results/*.json and RESULTS.md
+```
+
+See [`docker/README.md`](docker/README.md) and [`RESULTS.md`](RESULTS.md) for
+details and findings.
 
 ## How to reproduce
 
